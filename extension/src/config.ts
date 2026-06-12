@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
  * next source so activation can never be broken by config.
  */
 
-const DEFAULT_BACKEND_BASE = "http://127.0.0.1:3000";
+const DEFAULT_BACKEND_BASE = "https://meanwhile-kohl.vercel.app";
 
 export interface MeanwhileConfig {
   backendBaseUrl: string;
