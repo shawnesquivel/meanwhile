@@ -15,6 +15,13 @@
       "when": 1781246689903,
       "tag": "0001_friendly_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781247519452,
+      "tag": "0002_payouts",
+      "breakpoints": true
     }
   ]
 }

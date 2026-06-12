@@ -232,7 +232,34 @@ export const event = pgTable(
   ],
 );
 
+/**
+ * Payout request. MVP: a tracked request the operator settles manually
+ * (PayPal/Venmo/whatever) — `method` is free text the user supplies. Balance
+ * available = sum(event.creditedMicro) − sum(payouts not rejected).
+ */
+export const payoutRequest = pgTable(
+  "payout_request",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    amountMicro: bigint("amount_micro", { mode: "bigint" }).notNull(),
+    /** pending | paid | rejected */
+    status: text("status").notNull().default("pending"),
+    /** Where to send it, e.g. "paypal: you@example.com". */
+    method: text("method").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [index("payout_user_idx").on(t.userId)],
+);
+
 export type User = typeof user.$inferSelect;
 export type Campaign = typeof campaign.$inferSelect;
 export type Event = typeof event.$inferSelect;
 export type ExtSession = typeof extSession.$inferSelect;
+export type PayoutRequest = typeof payoutRequest.$inferSelect;
