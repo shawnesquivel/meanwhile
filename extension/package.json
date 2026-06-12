@@ -46,6 +46,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:harness": "node test/run-harness.mjs",
     "package": "node esbuild.mjs && vsce package --no-dependencies -o meanwhile.vsix"
   },
   "devDependencies": {

@@ -160,15 +160,18 @@ export interface ExtAuthRefreshResponse {
   refreshToken: string;
 }
 
-/** Route builders so callers never hand-concatenate paths. */
+/** Route builders so callers never hand-concatenate paths. Paths are relative
+ *  to the backend base URL and include the Next.js `/api` mount. */
+const P = `/api/${API_VERSION}` as const;
+
 export const routes = {
   portfolio: (surface: Surface, clientId: string) =>
-    `/${API_VERSION}/portfolio?surface=${encodeURIComponent(surface)}&client_id=${encodeURIComponent(clientId)}`,
-  metrics: () => `/${API_VERSION}/metrics`,
-  earnings: () => `/${API_VERSION}/earnings`,
-  authStart: () => `/${API_VERSION}/ext/auth/start`,
+    `${P}/portfolio?surface=${encodeURIComponent(surface)}&client_id=${encodeURIComponent(clientId)}`,
+  metrics: () => `${P}/metrics`,
+  earnings: () => `${P}/earnings`,
+  authStart: () => `${P}/ext/auth/start`,
   authPoll: (state: string) =>
-    `/${API_VERSION}/ext/auth/poll?state=${encodeURIComponent(state)}`,
-  authRefresh: () => `/${API_VERSION}/ext/auth/refresh`,
-  authSignout: () => `/${API_VERSION}/ext/auth/signout`,
+    `${P}/ext/auth/poll?state=${encodeURIComponent(state)}`,
+  authRefresh: () => `${P}/ext/auth/refresh`,
+  authSignout: () => `${P}/ext/auth/signout`,
 } as const;
