@@ -23,3 +23,4 @@ npm-debug.log*
 
 # drizzle local
 web/src/db/migrations/meta/_journal.json.bak
+.vercel
