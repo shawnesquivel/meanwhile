@@ -1,0 +1,59 @@
+{
+  "name": "meanwhile",
+  "displayName": "Meanwhile",
+  "publisher": "meanwhile-dev",
+  "version": "0.1.0",
+  "description": "Meanwhile, you're earning. Tasteful sponsor lines in the Claude Code & Codex thinking spinner — 50% revenue share to you. Open source.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shawnesquivel/meanwhile.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "meanwhile.signIn", "title": "Meanwhile: Sign in" },
+      { "command": "meanwhile.signOut", "title": "Meanwhile: Sign out" },
+      { "command": "meanwhile.restore", "title": "Meanwhile: Restore editor (undo all patches)" },
+      { "command": "meanwhile.status", "title": "Meanwhile: Show status" },
+      { "command": "meanwhile.menu", "title": "Meanwhile: Menu" },
+      { "command": "meanwhile.diagnose", "title": "Meanwhile: Diagnose" }
+    ],
+    "configuration": {
+      "title": "Meanwhile",
+      "properties": {
+        "meanwhile.backendBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Override the Meanwhile backend base URL. Empty = use the compiled-in default (or MEANWHILE_BASE env var)."
+        },
+        "meanwhile.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Write verbose debug logs to ~/.meanwhile/debug.log."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "node esbuild.mjs && vsce package --no-dependencies -o meanwhile.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
