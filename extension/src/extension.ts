@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { ClaudeCliAdapter } from "./adapters/claude-cli";
+import { CodexCliAdapter } from "./adapters/codex-cli";
 import { AuthService } from "./auth";
 import { drainCliEvents } from "./cli-events";
 import { readConfig } from "./config";
@@ -54,6 +55,7 @@ export async function activate(
   );
 
   const ccCli = new ClaudeCliAdapter();
+  const codexCli = new CodexCliAdapter();
   const distDir = context.extensionPath
     ? vscode.Uri.joinPath(context.extensionUri, "dist").fsPath
     : __dirname;
@@ -86,6 +88,7 @@ export async function activate(
       // statusline reads the cache live; spinner verbs re-sync via settings.
       if (p && p.sponsors.length > 0) {
         await ccCli.patch({ extensionDistDir: distDir, sponsors: p.sponsors });
+        await codexCli.patch({ extensionDistDir: distDir });
       }
     }
     // Impressions logged by CLI surfaces while we weren't looking.
@@ -140,11 +143,13 @@ export async function activate(
   });
 
   register("meanwhile.restore", async () => {
-    const r = ccCli.restore();
+    const a = ccCli.restore();
+    const b = codexCli.restore();
+    const ok = a.ok && b.ok;
     vscode.window.showInformationMessage(
-      r.ok
-        ? `Meanwhile: Claude Code CLI restored${r.detail ? ` (${r.detail})` : ""}.`
-        : `Meanwhile: restore failed — ${r.detail}. Original backup: ~/.meanwhile/backups/`,
+      ok
+        ? "Meanwhile: all surfaces restored (Claude CLI settings, Codex shim)."
+        : `Meanwhile: restore issues — cc: ${a.detail ?? "ok"}, codex: ${b.detail ?? "ok"}. Backups: ~/.meanwhile/backups/`,
     );
   });
 
@@ -161,13 +166,12 @@ export async function activate(
   });
 
   register("meanwhile.diagnose", async () => {
-    const det = await ccCli.detect();
+    const cc = await ccCli.detect();
+    const cx = await codexCli.detect();
     vscode.window.showInformationMessage(
       [
-        `Claude CLI: ${det.version ?? "not found"}`,
-        `settings: ${det.settingsDirExists ? "ok" : "missing"}`,
-        `spinner verbs: ${det.verbsSupported ? "supported" : "unsupported"}`,
-        `patched: ${ccCli.isPatched() ? "yes" : "no"}`,
+        `Claude CLI: ${cc.version ?? "not found"} (verbs ${cc.verbsSupported ? "ok" : "no"}, patched ${ccCli.isPatched() ? "yes" : "no"})`,
+        `Codex CLI: ${cx.version ?? "not found"} (patched ${codexCli.isPatched() ? "yes" : "no"})`,
       ].join(" · "),
     );
   });
