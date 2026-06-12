@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { ClaudeCliAdapter } from "./adapters/claude-cli";
+import { ClaudeWebviewAdapter } from "./adapters/claude-webview";
 import { CodexCliAdapter } from "./adapters/codex-cli";
 import { AuthService } from "./auth";
 import { drainCliEvents } from "./cli-events";
@@ -56,9 +57,11 @@ export async function activate(
 
   const ccCli = new ClaudeCliAdapter();
   const codexCli = new CodexCliAdapter();
+  const ccWebview = new ClaudeWebviewAdapter();
   const distDir = context.extensionPath
     ? vscode.Uri.joinPath(context.extensionUri, "dist").fsPath
     : __dirname;
+  let reloadPromptShown = false;
 
   let lastRefreshOk = true;
 
@@ -89,6 +92,29 @@ export async function activate(
       if (p && p.sponsors.length > 0) {
         await ccCli.patch({ extensionDistDir: distDir, sponsors: p.sponsors });
         await codexCli.patch({ extensionDistDir: distDir });
+        if (loopback && loopback.port > 0) {
+          const wv = ccWebview.patch({
+            extensionDistDir: distDir,
+            port: loopback.port,
+            token: loopback.token,
+          });
+          if (wv.changedAny && !reloadPromptShown) {
+            reloadPromptShown = true;
+            void vscode.window
+              .showInformationMessage(
+                "Meanwhile patched the Claude Code panel. Reload to start measuring sponsor lines.",
+                "Reload Now",
+                "Later",
+              )
+              .then((pick) => {
+                if (pick === "Reload Now") {
+                  void vscode.commands.executeCommand(
+                    "workbench.action.reloadWindow",
+                  );
+                }
+              });
+          }
+        }
       }
     }
     // Impressions logged by CLI surfaces while we weren't looking.
@@ -145,11 +171,12 @@ export async function activate(
   register("meanwhile.restore", async () => {
     const a = ccCli.restore();
     const b = codexCli.restore();
-    const ok = a.ok && b.ok;
+    const c = ccWebview.restore();
+    const ok = a.ok && b.ok && c.ok;
     vscode.window.showInformationMessage(
       ok
-        ? "Meanwhile: all surfaces restored (Claude CLI settings, Codex shim)."
-        : `Meanwhile: restore issues — cc: ${a.detail ?? "ok"}, codex: ${b.detail ?? "ok"}. Backups: ~/.meanwhile/backups/`,
+        ? "Meanwhile: all surfaces restored byte-for-byte (Claude CLI, Codex shim, Claude panel). Reload the window to finish."
+        : `Meanwhile: restore issues — cc: ${a.detail ?? "ok"}, codex: ${b.detail ?? "ok"}, panel: ${c.detail ?? "ok"}. Backups: ~/.meanwhile/backups/`,
     );
   });
 
@@ -172,6 +199,7 @@ export async function activate(
       [
         `Claude CLI: ${cc.version ?? "not found"} (verbs ${cc.verbsSupported ? "ok" : "no"}, patched ${ccCli.isPatched() ? "yes" : "no"})`,
         `Codex CLI: ${cx.version ?? "not found"} (patched ${codexCli.isPatched() ? "yes" : "no"})`,
+        `Claude panel: patched ${ccWebview.isPatched() ? "yes" : "no"}`,
       ].join(" · "),
     );
   });

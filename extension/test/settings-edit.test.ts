@@ -25,7 +25,7 @@ describe("applySponsorSettings", () => {
     const r = apply("");
     const j = JSON.parse(r.next);
     expect(j.statusLine).toEqual({ type: "command", command: CMD, padding: 0 });
-    expect(j.spinnerVerbs).toEqual(VERBS);
+    expect(j.spinnerVerbs).toEqual({ mode: "replace", verbs: VERBS });
     expect(r.changed).toBe(true);
     expect(r.conflicts).toEqual([]);
   });
@@ -56,17 +56,25 @@ describe("applySponsorSettings", () => {
     expect(j.statusLine.command).toBe("my-own-script.sh");
     expect(r.conflicts).toContain("statusline_foreign");
     // verbs still applied
-    expect(j.spinnerVerbs).toEqual(VERBS);
+    expect(j.spinnerVerbs).toEqual({ mode: "replace", verbs: VERBS });
   });
 
   it("refuses to clobber user spinnerVerbs unless ownership proven", () => {
-    const src = JSON.stringify({ spinnerVerbs: ["Pondering"] });
+    const src = JSON.stringify({
+      spinnerVerbs: { mode: "append", verbs: ["Pondering"] },
+    });
     const r = apply(src);
-    expect(JSON.parse(r.next).spinnerVerbs).toEqual(["Pondering"]);
+    expect(JSON.parse(r.next).spinnerVerbs).toEqual({
+      mode: "append",
+      verbs: ["Pondering"],
+    });
     expect(r.conflicts).toContain("spinnerverbs_foreign");
 
     const r2 = apply(src, { overwriteForeignVerbs: true });
-    expect(JSON.parse(r2.next).spinnerVerbs).toEqual(VERBS);
+    expect(JSON.parse(r2.next).spinnerVerbs).toEqual({
+      mode: "replace",
+      verbs: VERBS,
+    });
     expect(r2.conflicts).toEqual([]);
   });
 
@@ -83,7 +91,10 @@ describe("applySponsorSettings", () => {
       verbs: ["New sponsor line"],
       overwriteForeignVerbs: true,
     });
-    expect(JSON.parse(r2.next).spinnerVerbs).toEqual(["New sponsor line"]);
+    expect(JSON.parse(r2.next).spinnerVerbs).toEqual({
+      mode: "replace",
+      verbs: ["New sponsor line"],
+    });
     expect(r2.changed).toBe(true);
   });
 
@@ -114,7 +125,7 @@ describe("revertSponsorSettings", () => {
   it("restores the user's own prior statusLine and verbs", () => {
     const original = {
       statusLine: { type: "command", command: "mine.sh" },
-      spinnerVerbs: ["Pondering"],
+      spinnerVerbs: { mode: "append", verbs: ["Pondering"] },
     };
     // Simulate a forced takeover (user opted in), then restore.
     const r = applySponsorSettings(JSON.stringify(original), {

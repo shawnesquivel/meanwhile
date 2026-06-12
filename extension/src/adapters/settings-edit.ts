@@ -3,9 +3,12 @@
  * the adapter owns IO, backups, and policy; these functions own correctness
  * of the JSON transforms and are unit-tested in isolation.
  *
- * Claude Code reads two keys we care about:
+ * Claude Code reads two keys we care about (shapes per the extension's
+ * claude-code-settings.schema.json):
  *   - statusLine:   { type: "command", command: string, padding?: number }
- *   - spinnerVerbs: string[]   (thinking-verb override, CC >= 2.1.143)
+ *   - spinnerVerbs: { mode: "append" | "replace", verbs: string[] }
+ *     (thinking-verb override, CC >= 2.1.143; consumed by BOTH the terminal
+ *     spinner and the VS Code webview spinner component)
  */
 
 /** Marker that identifies a statusLine command as ours. */
@@ -98,14 +101,16 @@ export function applySponsorSettings(
     }
   }
 
-  // spinnerVerbs: a plain string[] carries no ownership marker, so the
-  // adapter's patch-state decides whether an existing value is ours.
+  // spinnerVerbs: the value carries no ownership marker, so the adapter's
+  // patch-state decides whether an existing value is ours. Written in the
+  // schema shape: { mode: "replace", verbs: [...] }.
   if (opts.verbs !== null) {
     const hasForeign = prev.hadSpinnerVerbs && !opts.overwriteForeignVerbs;
+    const want = { mode: "replace", verbs: opts.verbs };
     if (hasForeign) {
       conflicts.push("spinnerverbs_foreign");
-    } else if (JSON.stringify(obj.spinnerVerbs) !== JSON.stringify(opts.verbs)) {
-      obj.spinnerVerbs = opts.verbs;
+    } else if (JSON.stringify(obj.spinnerVerbs) !== JSON.stringify(want)) {
+      obj.spinnerVerbs = want;
       changed = true;
     }
   }
