@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
+import { ClaudeCliAdapter } from "./adapters/claude-cli";
 import { AuthService } from "./auth";
+import { drainCliEvents } from "./cli-events";
 import { readConfig } from "./config";
 import { deviceId } from "./ids";
 import { dlog, setDebug } from "./log";
@@ -11,9 +13,10 @@ import { StatusBar } from "./statusbar";
 /**
  * Meanwhile extension entry point.
  *
- * M1b: real service loop — auth (opaque token layer), portfolio fetch + CLI
- * cache, metric queue, loopback bridge for webviews, live status bar.
- * Editor/CLI patching arrives in M1c–M1e.
+ * Service loop (M1b): auth, portfolio fetch + CLI cache, metric queue,
+ * loopback bridge, live status bar.
+ * Surfaces: Claude Code CLI statusline + spinner verbs (M1c); Codex CLI and
+ * the webview overlays land in M1d/M1e.
  */
 
 const TICK_MS = 30_000;
@@ -50,6 +53,11 @@ export async function activate(
     { dispose: () => ticker && clearInterval(ticker) },
   );
 
+  const ccCli = new ClaudeCliAdapter();
+  const distDir = context.extensionPath
+    ? vscode.Uri.joinPath(context.extensionUri, "dist").fsPath
+    : __dirname;
+
   let lastRefreshOk = true;
 
   const paint = () => {
@@ -74,7 +82,14 @@ export async function activate(
     if (force || portfolio.stale) {
       const p = await portfolio.refresh();
       lastRefreshOk = p !== null;
+      // Keep the CLI surfaces in lockstep with the freshest queue: the
+      // statusline reads the cache live; spinner verbs re-sync via settings.
+      if (p && p.sponsors.length > 0) {
+        await ccCli.patch({ extensionDistDir: distDir, sponsors: p.sponsors });
+      }
     }
+    // Impressions logged by CLI surfaces while we weren't looking.
+    if (metrics) drainCliEvents(metrics, clientId);
     paint();
   };
 
@@ -125,9 +140,11 @@ export async function activate(
   });
 
   register("meanwhile.restore", async () => {
-    // M1c–M1e: revert every patched surface byte-for-byte from backups.
+    const r = ccCli.restore();
     vscode.window.showInformationMessage(
-      "Meanwhile: nothing to restore yet (no surfaces patched).",
+      r.ok
+        ? `Meanwhile: Claude Code CLI restored${r.detail ? ` (${r.detail})` : ""}.`
+        : `Meanwhile: restore failed — ${r.detail}. Original backup: ~/.meanwhile/backups/`,
     );
   });
 
@@ -144,8 +161,14 @@ export async function activate(
   });
 
   register("meanwhile.diagnose", async () => {
+    const det = await ccCli.detect();
     vscode.window.showInformationMessage(
-      "Meanwhile: surface detection report lands with the patchers (M1c–M1e).",
+      [
+        `Claude CLI: ${det.version ?? "not found"}`,
+        `settings: ${det.settingsDirExists ? "ok" : "missing"}`,
+        `spinner verbs: ${det.verbsSupported ? "supported" : "unsupported"}`,
+        `patched: ${ccCli.isPatched() ? "yes" : "no"}`,
+      ].join(" · "),
     );
   });
 
