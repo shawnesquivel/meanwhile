@@ -155,12 +155,36 @@ export async function ingestMetric(
     .onConflictDoNothing({ target: event.nonce })
     .returning({ id: event.id });
 
-  // Count a billable impression against the campaign budget exactly once.
-  if (inserted.length > 0 && c && beacon.event === "view_threshold_met") {
+  // Consume campaign budget exactly once per accepted event. A click burns
+  // CLICK_MULTIPLIER impressions so total user credits can never exceed the
+  // advertiser's prepaid block value.
+  const budgetCost =
+    beacon.event === "view_threshold_met"
+      ? 1n
+      : beacon.event === "click"
+        ? CLICK_MULTIPLIER
+        : 0n;
+  if (inserted.length > 0 && c && budgetCost > 0n) {
     await db
       .update(campaign)
-      .set({ impressionsServed: sql`${campaign.impressionsServed} + 1` })
+      .set({
+        impressionsServed: sql`${campaign.impressionsServed} + ${budgetCost}`,
+        updatedAt: new Date(),
+      })
       .where(eq(campaign.id, c.id));
+    // Flip to exhausted once a finite budget is fully consumed.
+    if (c.impressionsPurchased > 0n) {
+      await db
+        .update(campaign)
+        .set({ status: "exhausted" })
+        .where(
+          and(
+            eq(campaign.id, c.id),
+            eq(campaign.status, "active"),
+            sql`${campaign.impressionsServed} >= ${campaign.impressionsPurchased}`,
+          ),
+        );
+    }
   }
 
   return { accepted: inserted.length > 0 };

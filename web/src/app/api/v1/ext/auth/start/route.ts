@@ -8,6 +8,6 @@ export const OPTIONS = preflight;
 
 export async function POST() {
   const { state, expiresInSec } = await createAuthRequest();
-  const authUrl = `${env.NEXT_PUBLIC_APP_URL}/ext/authorize?state=${encodeURIComponent(state)}`;
+  const authUrl = `${env.NEXT_PUBLIC_APP_URL}/ext-auth?state=${encodeURIComponent(state)}`;
   return jsonResponse({ state, authUrl, expiresInSec });
 }

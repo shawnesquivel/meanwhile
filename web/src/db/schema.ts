@@ -99,8 +99,13 @@ export const campaign = pgTable(
     text: text("text").notNull(),
     clickUrl: text("click_url").notNull(),
     iconUrl: text("icon_url"),
-    /** draft | active | paused | exhausted */
+    /** draft | pending_payment | active | paused | exhausted */
     status: text("status").notNull().default("draft"),
+    /** Rate-card tier: standard | boost (boost = higher price, serves first). */
+    tier: text("tier").notNull().default("standard"),
+    /** Stripe Checkout session that funded this campaign (null in dev mode). */
+    stripeSessionId: text("stripe_session_id"),
+    contactEmail: text("contact_email"),
     /** µUSD charged per 1,000 impressions (drives both billing and rank). */
     pricePerThousandMicro: bigint("price_per_thousand_micro", {
       mode: "bigint",

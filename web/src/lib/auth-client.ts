@@ -2,7 +2,7 @@
 
 import { createAuthClient } from "better-auth/react";
 
-/** Browser-side auth client. Base URL defaults to the current origin. */
-export const authClient = createAuthClient();
+/** Browser-side auth client. Server-side lives in lib/auth.ts. */
+export const authClient = createAuthClient({});
 
-export const { signIn, signUp, signOut, useSession } = authClient;
+export const { useSession, signIn, signUp, signOut } = authClient;

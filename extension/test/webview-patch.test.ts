@@ -114,8 +114,10 @@ describe("real Claude Code bundles", () => {
       const wv = join(dir, "webview", "index.js");
       const ext = join(dir, "extension.js");
       if (!existsSync(wv) || !existsSync(ext)) continue;
-      const webviewSrc = readFileSync(wv, "utf8");
-      const extensionSrc = readFileSync(ext, "utf8");
+      // The live install may currently be patched (that's the product
+      // working as intended) — normalize to pristine before round-tripping.
+      const webviewSrc = unpatchWebviewBundle(readFileSync(wv, "utf8"));
+      const extensionSrc = unpatchExtensionCsp(readFileSync(ext, "utf8"));
 
       const cls = extractSpinnerTextClass(webviewSrc);
       expect(cls).toMatch(/^text_/);
